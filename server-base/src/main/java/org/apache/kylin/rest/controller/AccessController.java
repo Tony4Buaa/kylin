@@ -19,18 +19,20 @@
 package org.apache.kylin.rest.controller;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.kylin.common.KylinConfig;
 import org.apache.kylin.common.persistence.AclEntity;
+import org.apache.kylin.common.util.Pair;
 import org.apache.kylin.rest.request.AccessRequest;
 import org.apache.kylin.rest.response.AccessEntryResponse;
-import org.apache.kylin.rest.security.AclEntityType;
+import org.apache.kylin.rest.security.AclPermission;
 import org.apache.kylin.rest.security.AclPermissionFactory;
-import org.apache.kylin.rest.security.ExternalAuthorizationProvider;
+import org.apache.kylin.rest.security.ExternalAclProvider;
 import org.apache.kylin.rest.service.AccessService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.acls.domain.PrincipalSid;
 import org.springframework.security.acls.model.Acl;
 import org.springframework.security.acls.model.Permission;
 import org.springframework.security.acls.model.Sid;
@@ -53,9 +55,6 @@ public class AccessController extends BasicController {
     @Qualifier("accessService")
     private AccessService accessService;
 
-    @Autowired
-    private ExternalAuthorizationProvider externalAuthorizationProvider;
-
     /**
      * Get access entry list of a domain object
      * 
@@ -66,8 +65,18 @@ public class AccessController extends BasicController {
     @RequestMapping(value = "/{type}/{uuid}", method = { RequestMethod.GET }, produces = { "application/json" })
     @ResponseBody
     public List<AccessEntryResponse> getAccessEntities(@PathVariable String type, @PathVariable String uuid) {
-        if (KylinConfig.getInstanceFromEnv().isRangerAclEnabled() && (AclEntityType.PROJECT_INSTANCE.equals(type) || AclEntityType.CUBE_INSTANCE.equals(type))) {
-            return externalAuthorizationProvider.getAcl(type, uuid);
+        ExternalAclProvider eap = ExternalAclProvider.getInstance();
+        
+        if (eap != null) {
+            List<AccessEntryResponse> ret = new ArrayList<>();
+            List<Pair<String, AclPermission>> acl = eap.getAcl(type, uuid);
+            if (acl != null) {
+                for (Pair<String, AclPermission> p : acl) {
+                    PrincipalSid sid = new PrincipalSid(p.getFirst());
+                    ret.add(new AccessEntryResponse(null, sid, p.getSecond(), true));
+                }
+            }
+            return ret;
         } else {
             AclEntity ae = accessService.getAclEntity(type, uuid);
             Acl acl = accessService.getAcl(ae);

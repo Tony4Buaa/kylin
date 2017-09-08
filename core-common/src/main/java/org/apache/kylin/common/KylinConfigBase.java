@@ -1178,6 +1178,10 @@ abstract public class KylinConfigBase implements Serializable {
     public int getServerUserCacheMaxEntries() {
         return Integer.valueOf(this.getOptional("kylin.server.auth-user-cache.max-entries", "100"));
     }
+    
+    public String getExternalAclProvider() {
+        return getOptional("kylin.server.external-acl-provider", "");
+    }
 
     // ============================================================================
     // WEB
@@ -1211,15 +1215,4 @@ abstract public class KylinConfigBase implements Serializable {
         return getOptional("kylin.metric.perf-logger.class", "org.apache.kylin.common.metrics.perflog.PerfLogger");
     }
 
-    public String getAuthorizationProvider() {
-        if (isRangerAclEnabled()) {
-            return getOptional("kylin.authorization.provider", "org.apache.kylin.rest.security.KylinAuthorization");
-        } else {
-            return "org.apache.kylin.rest.security.KylinAuthorization";
-        }
-    }
-
-    public boolean isRangerAclEnabled() {
-        return Boolean.parseBoolean(getOptional("kylin.authorization.ranger-acl-enabled", "false"));
-    }
 }
